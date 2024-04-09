@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "geoparquetandsedona"
+version = "0.1.0"
+description = ""
+authors = ["Pengfei Liu <liu.pengfei@hotmail.fr>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pyspark = "3.3.1"
+apache-sedona = {extras = ["spark"], version = "^1.5.1"}
+notebook = "^7.1.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
