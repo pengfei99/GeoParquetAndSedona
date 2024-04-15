@@ -13,6 +13,8 @@ notebook = "^7.1.2"
 ipyleaflet = "^0.18.2"
 osmnx = "^1.9.2"
 networkx = "^3.3"
+geopandas = "^0.14.3"
+shapely = "^2.0.3"
 
 
 [build-system]
