@@ -23,7 +23,7 @@ def get_route(lat_start: str, long_start: str, lat_end: str, long_end: str,
     url = f"http://{host}/route/v1/driving/{start_point};{end_point}?steps={show_steps}"
 
     # Make the GET request
-    response = requests.get(url, verify=False)
+    response = requests.get(url, verify=False, timeout=10)
     json_response = None
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
