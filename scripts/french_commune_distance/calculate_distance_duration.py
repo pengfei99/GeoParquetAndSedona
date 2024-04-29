@@ -9,8 +9,32 @@ from pyspark.sql.functions import udf, col, split
 ENV_KEY = "OSRM_HOST"
 
 
+def read_code_list_from_file(filepath: str):
+    """
+    This function read the insee code list part file and return a list of insee code (str)
+    :param filepath: path for the part file
+    :type filepath: str
+    :return: List[str]
+    :rtype:
+    """
+    with open(filepath, 'r') as file:
+        lines = file.readlines()
+        # must remove the '\n'
+        lines = [line.rstrip('\n') for line in lines]
+        return lines
+
+
 # required functions
 def get_osrm_host(env_key, default: str = "127.0.0.1:5000") -> str:
+    """
+    This function read the env var "OSRM_HOST", and return the value. If does not exist return a default value
+    :param env_key:
+    :type env_key:
+    :param default:
+    :type default:
+    :return:
+    :rtype:
+    """
     return os.getenv(env_key, default)
 
 
@@ -99,27 +123,40 @@ def main():
         print("Usage: python calculate_distance_duration.py <osrm_host> <partition_number>")
         return
 
-    # set osrm host
+    # step1: set osrm host
     osrm_host = str(sys.argv[1])
     os.environ[ENV_KEY] = osrm_host
     partition = int(sys.argv[2])
 
-    # Create a SparkSession
+    # input argument config
+    # path of the code list split files parent dir
+    code_list_parent_dir = "/tmp/code_split_test"
+    #
+    start_part = 0
+    end_part = 0
+    # output result file path
+    output_file_path = "/tmp/duration_test"
+
+    # step2: Create a SparkSession
     spark = SparkSession.builder \
         .appName("Example PySpark Job") \
         .getOrCreate()
 
-    # converted centroid parquet file path
+    # step3: read the converted french commune centroid parquet file
     fr_zone_file_path = "/home/pliu/data/converted_centroid_of_french_commune"
     converted_centroid_df = spark.read.parquet(fr_zone_file_path)
     converted_centroid_df.cache()
     converted_centroid_df.show(5)
 
-    # input argument
-    code_list = ["75056", "92049", "2B015", "2B213"]
-    file_path = "/tmp/duration_test"
+    # step4: for each code list split part, calculate the distance and duration matrix
+    for i in range(start_part, end_part+1):
+        filename = f"{code_list_parent_dir}/part_{i}.txt"
 
-    calculate_distance_duration_matrix_in_patch(code_list, converted_centroid_df, file_path, partition_num=partition)
+        code_list = read_code_list_from_file(filename)
+        print(f"code list: {code_list}")
+        calculate_distance_duration_matrix_in_patch(code_list, converted_centroid_df,
+                                                    output_file_path,
+                                                    partition_num=partition)
 
     # Stop the SparkSession
     spark.stop()
