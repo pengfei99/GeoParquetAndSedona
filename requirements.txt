@@ -1,3 +1,5 @@
 apache-sedona[spark]
 pyspark
 notebook
+geopandas
+ipyleaflet
