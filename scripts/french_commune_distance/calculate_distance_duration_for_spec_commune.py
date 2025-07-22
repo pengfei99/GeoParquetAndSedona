@@ -107,11 +107,9 @@ def calculate_distance_duration_matrix_in_patch(route_matrix_df: DataFrame, outp
     This function calculate the distance and duration between src and dest commune in the giving matrix
     :param route_matrix_df:
     :param output_file_path:
-    :param patch_size:
-    :param partition_num:
     :return:
     """
-    # 3. calculate the distance and duration
+    # 1. use the udf to calculate the distance and duration
     distance_duration_df = route_matrix_df.withColumn("distance_duration",
                                                         get_distance_duration(col("source_lat"), col("source_long"),
                                                                               col("dest_lat"),
@@ -122,40 +120,46 @@ def calculate_distance_duration_matrix_in_patch(route_matrix_df: DataFrame, outp
                                                                                                     ";")[
                                                                                                     0]).withColumn(
         "duration(minutes)", split(col("distance_duration"), ";")[1]).drop("distance_duration")
-    # 4. write the result into a parquet file
+    # 2. write the result into a parquet file with append mode
+    # Do not change it to overwrite.
     distance_duration_df.write.mode("append").partitionBy("source_insee").parquet(output_file_path)
 
 
 def main():
+    test = True
     # get argument from command line
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         print("Usage: python calculate_distance_duration.py <osrm_host>")
         return
 
     # step1: set osrm host
     osrm_host = str(sys.argv[1])
     os.environ[ENV_KEY] = osrm_host
+    print(f"Read osrm_host: {osrm_host}")
 
     # step2: Create a SparkSession
     spark = SparkSession.builder \
         .appName("Extra route duration calculation") \
         .getOrCreate()
+    print("Spark session created")
 
-    # step3: read the converted french commune centroid parquet file
-    fr_zone_file_path = "/home/pliu/data/converted_centroid_of_french_commune"
-    converted_centroid_df = spark.read.parquet(fr_zone_file_path)
-    converted_centroid_df.cache()
-    converted_centroid_df.show(5)
+    # step3: read the extra routes matrix
+    extra_route_file_path = "/home/pliu/data/extra_routes_matrix"
+    extra_routes_df = spark.read.parquet(extra_route_file_path)
+    extra_routes_df.cache()
+    extra_routes_df.show(5)
 
-    # step4: for each code list split part, calculate the distance and duration matrix
-    for i in range(start_part, end_part+1):
-        filename = f"{code_list_parent_dir}/part_{i}.txt"
+    if test:
+        print("In test mode")
+        target_df = extra_routes_df.limit(100)
+        output_file_path = "/home/pliu/fr_commune_distance/data/duration_prod_final"
+    else:
+        print("In prod mode")
+        output_file_path = "/home/pliu/data/duration_prod_final"
+        target_df = extra_routes_df
 
-        code_list = read_code_list_from_file(filename)
-        print(f"code list: {code_list}")
-        calculate_distance_duration_matrix_in_patch(code_list, converted_centroid_df,
-                                                    output_file_path,
-                                                    partition_num=partition)
+    print("Writing to file")
+    calculate_distance_duration_matrix_in_patch(target_df, output_file_path)
 
     # Stop the SparkSession
     spark.stop()
